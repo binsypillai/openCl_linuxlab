@@ -1,13 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-//#include <CL/opencl.h>
-#include <OpenCL/OpenCL.h>
+#include <time.h>
+#include <CL/opencl.h>
+//#include <OpenCL/OpenCL.h>
 
 const char *kernelSource =                                      "\n"\
 "#pragma OPENCL EXTENSION cl_khr_fp64 : enable                    \n" \
 
-"__kernel void vecAdd(  __global long *a,                        \n"\
+"__kernel void Euerl(  __global long *a,                        \n"\
 "                       __global long *b,                        \n"\
 "                       __global long *c,                        \n"\
 "                       const unsigned long n)                    \n"\
@@ -69,11 +70,12 @@ int main( int argc, char* argv[] )
     
     tempVar = 0;
     
-    printf("\n\nEnter lower bound \n");
-    scanf("%ld",&lowerbound );
-    
-    printf("\n\nEnter upper bound \n");
-    scanf("%ld",&upperbound );
+    if (argc != 3) {
+   	printf("not 2 arguments\n");
+    	return 1;
+    }
+    sscanf(argv[1], "%ld", &lowerbound);
+    sscanf(argv[2], "%ld", &upperbound);
     
     
     // Size, in bytes, of each vector
@@ -83,18 +85,7 @@ int main( int argc, char* argv[] )
     A = (long*)malloc(bytes);
     B = (long*)malloc(bytes);
     C = (long*)malloc(bytes);
-    
-    if (lowerbound > upperbound)
-    {
-        printf("\n\nEnter correct number , lower bound should be less than upper bound \n");
-        return 1;
-    }
-    else if (lowerbound == NULL  || upperbound == NULL )
-    {
-        printf("\n\nlower bound should be less than upper bound canot be empty \n");
-        return 1;
-        
-    }
+ 
     tempVar = lowerbound;
     diff = upperbound-lowerbound+1;
     n = diff;
@@ -112,9 +103,10 @@ int main( int argc, char* argv[] )
     cl_int err;
     
     
-    lSize = 64;   // Number of work items
+    lSize = 512;   // Number of work items changed from 64 to 512 to 
+                   // check if there is any change in performance
     
-    
+    clock_t t0= clock();
     glSize = ceil(n/(float)lSize)*lSize;
     
     err = clGetPlatformIDs(1, &cpPlatform, NULL);
@@ -136,7 +128,7 @@ int main( int argc, char* argv[] )
     clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
     
     // Create the compute kernel in the program we wish to run
-    kernel = clCreateKernel(program, "vecAdd", &err);
+    kernel = clCreateKernel(program, "Euerl", &err);
     
     // reserve space
     a = clCreateBuffer(context, CL_MEM_READ_ONLY, bytes, NULL, NULL);
@@ -170,6 +162,10 @@ int main( int argc, char* argv[] )
     for(i=0; i<n; i++)
         sum += C[i];
     printf("final result: %ld\n", sum);
+
+
+    printf("Time take is %f seconds\n", (double)(clock()-t0)/CLOCKS_PER_SEC);    
+
     
     // release OpenCL resources
     clReleaseMemObject(a);
